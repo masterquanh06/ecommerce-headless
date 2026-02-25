@@ -1,6 +1,6 @@
-import {Link, useNavigate} from 'react-router';
-import {AddToCartButton} from './AddToCartButton';
-import {useAside} from './Aside';
+import { Link, useNavigate } from 'react-router';
+import { AddToCartButton } from './AddToCartButton';
+import { useAside } from './Aside';
 
 /**
  * @param {{
@@ -8,19 +8,20 @@ import {useAside} from './Aside';
  *   selectedVariant: ProductFragment['selectedOrFirstAvailableVariant'];
  * }}
  */
-export function ProductForm({productOptions, selectedVariant}) {
+export function ProductForm({ productOptions, selectedVariant }) {
   const navigate = useNavigate();
-  const {open} = useAside();
+  const { open } = useAside();
   return (
-    <div className="product-form">
+    <div className="flex flex-col gap-8">
       {productOptions.map((option) => {
-        // If there is only a single value in the option values, don't display the option
         if (option.optionValues.length === 1) return null;
 
         return (
-          <div className="product-options" key={option.name}>
-            <h5>{option.name}</h5>
-            <div className="product-options-grid">
+          <div className="flex flex-col gap-3" key={option.name}>
+            <h5 className="font-semibold text-gray-900 uppercase tracking-widest text-xs">
+              {option.name}
+            </h5>
+            <div className="flex flex-wrap gap-3">
               {option.optionValues.map((value) => {
                 const {
                   name,
@@ -33,48 +34,31 @@ export function ProductForm({productOptions, selectedVariant}) {
                   swatch,
                 } = value;
 
+                // Hiệu ứng chung cho nút chọn
+                const baseButtonStyles = `px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 border-2 ${selected
+                    ? 'border-black bg-black text-white shadow-md'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400'
+                  } ${!available && 'opacity-30 cursor-not-allowed'}`;
+
                 if (isDifferentProduct) {
-                  // SEO
-                  // When the variant is a combined listing child product
-                  // that leads to a different url, we need to render it
-                  // as an anchor tag
                   return (
                     <Link
-                      className="product-options-item"
+                      className={baseButtonStyles}
                       key={option.name + name}
                       prefetch="intent"
                       preventScrollReset
                       replace
                       to={`/products/${handle}?${variantUriQuery}`}
-                      style={{
-                        border: selected
-                          ? '1px solid black'
-                          : '1px solid transparent',
-                        opacity: available ? 1 : 0.3,
-                      }}
                     >
                       <ProductOptionSwatch swatch={swatch} name={name} />
                     </Link>
                   );
                 } else {
-                  // SEO
-                  // When the variant is an update to the search param,
-                  // render it as a button with javascript navigating to
-                  // the variant so that SEO bots do not index these as
-                  // duplicated links
                   return (
                     <button
                       type="button"
-                      className={`product-options-item${
-                        exists && !selected ? ' link' : ''
-                      }`}
+                      className={baseButtonStyles}
                       key={option.name + name}
-                      style={{
-                        border: selected
-                          ? '1px solid black'
-                          : '1px solid transparent',
-                        opacity: available ? 1 : 0.3,
-                      }}
                       disabled={!exists}
                       onClick={() => {
                         if (!selected) {
@@ -91,29 +75,31 @@ export function ProductForm({productOptions, selectedVariant}) {
                 }
               })}
             </div>
-            <br />
           </div>
         );
       })}
-      <AddToCartButton
-        disabled={!selectedVariant || !selectedVariant.availableForSale}
-        onClick={() => {
-          open('cart');
-        }}
-        lines={
-          selectedVariant
-            ? [
+
+      <div className="pt-4">
+        <AddToCartButton
+          disabled={!selectedVariant || !selectedVariant.availableForSale}
+          onClick={() => {
+            open('cart');
+          }}
+          lines={
+            selectedVariant
+              ? [
                 {
                   merchandiseId: selectedVariant.id,
                   quantity: 1,
                   selectedVariant,
                 },
               ]
-            : []
-        }
-      >
-        {selectedVariant?.availableForSale ? 'Add to cart' : 'Sold out'}
-      </AddToCartButton>
+              : []
+          }
+        >
+          {selectedVariant?.availableForSale ? 'Add to cart' : 'Sold out'}
+        </AddToCartButton>
+      </div>
     </div>
   );
 }
@@ -124,7 +110,7 @@ export function ProductForm({productOptions, selectedVariant}) {
  *   name: string;
  * }}
  */
-function ProductOptionSwatch({swatch, name}) {
+function ProductOptionSwatch({ swatch, name }) {
   const image = swatch?.image?.previewImage?.url;
   const color = swatch?.color;
 

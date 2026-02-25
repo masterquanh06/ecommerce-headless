@@ -1,4 +1,4 @@
-import {useLoaderData} from 'react-router';
+import { useLoaderData } from 'react-router';
 import {
   getSelectedProductOptions,
   Analytics,
@@ -7,17 +7,24 @@ import {
   getAdjacentAndFirstAvailableVariants,
   useSelectedOptionInUrlParam,
 } from '@shopify/hydrogen';
-import {ProductPrice} from '~/components/ProductPrice';
-import {ProductImage} from '~/components/ProductImage';
-import {ProductForm} from '~/components/ProductForm';
-import {redirectIfHandleIsLocalized} from '~/lib/redirect';
+import { ProductPrice } from '~/components/ProductPrice';
+import { ProductImage } from '~/components/ProductImage';
+import { ProductForm } from '~/components/ProductForm';
+import { redirectIfHandleIsLocalized } from '~/lib/redirect';
 
 /**
  * @type {Route.MetaFunction}
  */
-export const meta = ({data}) => {
+export const meta = ({ data }) => {
+  const seoTitle = data?.product?.seo?.title ?? data?.product?.title ?? 'Product Detail';
+  const seoDescription =
+    data?.product?.seo?.description ??
+    data?.product?.description?.substring(0, 160) ??
+    'A great product for you.';
+
   return [
-    {title: `Hydrogen | ${data?.product.title ?? ''}`},
+    { title: `${seoTitle} - Akira Storefront` },
+    { name: 'description', content: seoDescription },
     {
       rel: 'canonical',
       href: `/products/${data?.product.handle}`,
@@ -35,7 +42,7 @@ export async function loader(args) {
   // Await the critical data required to render initial state of the page
   const criticalData = await loadCriticalData(args);
 
-  return {...deferredData, ...criticalData};
+  return { ...deferredData, ...criticalData };
 }
 
 /**
@@ -43,27 +50,27 @@ export async function loader(args) {
  * needed to render the page. If it's unavailable, the whole page should 400 or 500 error.
  * @param {Route.LoaderArgs}
  */
-async function loadCriticalData({context, params, request}) {
-  const {handle} = params;
-  const {storefront} = context;
+async function loadCriticalData({ context, params, request }) {
+  const { handle } = params;
+  const { storefront } = context;
 
   if (!handle) {
     throw new Error('Expected product handle to be defined');
   }
 
-  const [{product}] = await Promise.all([
+  const [{ product }] = await Promise.all([
     storefront.query(PRODUCT_QUERY, {
-      variables: {handle, selectedOptions: getSelectedProductOptions(request)},
+      variables: { handle, selectedOptions: getSelectedProductOptions(request) },
     }),
     // Add other queries here, so that they are loaded in parallel
   ]);
 
   if (!product?.id) {
-    throw new Response(null, {status: 404});
+    throw new Response(null, { status: 404 });
   }
 
   // The API handle might be localized, so redirect to the localized handle
-  redirectIfHandleIsLocalized(request, {handle, data: product});
+  redirectIfHandleIsLocalized(request, { handle, data: product });
 
   return {
     product,
@@ -76,7 +83,7 @@ async function loadCriticalData({context, params, request}) {
  * Make sure to not throw any errors here, as it will cause the page to 500.
  * @param {Route.LoaderArgs}
  */
-function loadDeferredData({context, params}) {
+function loadDeferredData({ context, params }) {
   // Put any API calls that is not critical to be available on first page render
   // For example: product reviews, product recommendations, social feeds.
 
@@ -85,7 +92,7 @@ function loadDeferredData({context, params}) {
 
 export default function Product() {
   /** @type {LoaderReturnData} */
-  const {product} = useLoaderData();
+  const { product } = useLoaderData();
 
   // Optimistically selects a variant with given available variant information
   const selectedVariant = useOptimisticVariant(
@@ -103,46 +110,69 @@ export default function Product() {
     selectedOrFirstAvailableVariant: selectedVariant,
   });
 
-  const {title, descriptionHtml} = product;
+  const { title, descriptionHtml } = product;
 
   return (
-    <div className="product">
-      <ProductImage image={selectedVariant?.image} />
-      <div className="product-main">
-        <h1>{title}</h1>
-        <ProductPrice
-          price={selectedVariant?.price}
-          compareAtPrice={selectedVariant?.compareAtPrice}
-        />
-        <br />
-        <ProductForm
-          productOptions={productOptions}
-          selectedVariant={selectedVariant}
-        />
-        <br />
-        <br />
-        <p>
-          <strong>Description</strong>
-        </p>
-        <br />
-        <div dangerouslySetInnerHTML={{__html: descriptionHtml}} />
-        <br />
+    <div className="max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-24">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24">
+        {/* Cột trái: Ảnh sản phẩm */}
+        <div className="product-gallery">
+          <div className="sticky top-24 bg-gray-50 rounded-3xl overflow-hidden">
+            <ProductImage image={selectedVariant?.image} />
+          </div>
+        </div>
+
+        {/* Cột phải: Thông tin & Form thêm vào giỏ */}
+        <div className="product-main flex flex-col gap-8">
+          <div className="flex flex-col gap-4 border-b border-gray-100 pb-8">
+            {product.vendor && (
+              <span className="text-sm font-bold tracking-widest text-gray-400 uppercase">
+                {product.vendor}
+              </span>
+            )}
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900">
+              {title}
+            </h1>
+            <div className="text-2xl font-medium text-black mt-2">
+              <ProductPrice
+                price={selectedVariant?.price}
+                compareAtPrice={selectedVariant?.compareAtPrice}
+              />
+            </div>
+          </div>
+
+          <div className="product-form-container">
+            <ProductForm
+              productOptions={productOptions}
+              selectedVariant={selectedVariant}
+            />
+          </div>
+
+          <div className="mt-8 pt-8 border-t border-gray-100">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Description</h3>
+            <div
+              className="prose prose-sm text-gray-600 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            />
+          </div>
+
+          <Analytics.ProductView
+            data={{
+              products: [
+                {
+                  id: product.id,
+                  title: product.title,
+                  price: selectedVariant?.price.amount || '0',
+                  vendor: product.vendor,
+                  variantId: selectedVariant?.id || '',
+                  variantTitle: selectedVariant?.title || '',
+                  quantity: 1,
+                },
+              ],
+            }}
+          />
+        </div>
       </div>
-      <Analytics.ProductView
-        data={{
-          products: [
-            {
-              id: product.id,
-              title: product.title,
-              price: selectedVariant?.price.amount || '0',
-              vendor: product.vendor,
-              variantId: selectedVariant?.id || '',
-              variantTitle: selectedVariant?.title || '',
-              quantity: 1,
-            },
-          ],
-        }}
-      />
     </div>
   );
 }
